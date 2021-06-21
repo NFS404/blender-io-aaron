@@ -1,8 +1,12 @@
 import importlib
 
+from . import hash
+
 from . import data
 from . import load
 from . import save
+
+importlib.reload(hash)
 
 importlib.reload(data)
 importlib.reload(load)

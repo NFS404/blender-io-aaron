@@ -2,6 +2,7 @@ import json
 
 import bpy
 from mathutils import Vector
+from .hash import string_to_hash
 
 
 def aaron_vec(vec):
@@ -21,6 +22,21 @@ def aaron_quat(quat):
     }
 
 
+def mesh_to_pointcloud(mesh: bpy.types.Mesh) -> dict:
+    verts = []
+    for vert in mesh.vertices:
+        x, y, z = vert.co
+        verts.append({
+            'X': y,
+            'Y': z,
+            'Z': x,
+            'W': 0
+        })
+    return {
+        'Vertices': verts
+    }
+
+
 def main(context, report):
     scene_data = context.scene.aaron_data
 
@@ -29,12 +45,13 @@ def main(context, report):
         'BaseModelName': scene_data.base_model_name,
         'ManufacturerName': scene_data.manufacturer_name,
         'UsageType': scene_data.usage_type,
-        'DefaultBasePaint': scene_data.default_base_paint & 0xFFFFFFFF,
+        'DefaultBasePaint': string_to_hash(scene_data.default_base_paint),
         'Skinnable': scene_data.skinnable,
         'DefaultSkinNumber': scene_data.default_skin_number
     }
 
     out_bounds = []
+    point_clouds = []
 
     def add_bound(object, parent_pos=None):
         pos, rot, scale = object.matrix_world.decompose()
@@ -43,18 +60,25 @@ def main(context, report):
         our_pos = Vector()
         if parent_pos is not None:
             our_pos = pos - parent_pos
+
+        pcloud_idx = 255
+        point_cloud = object.aaron_data.point_cloud
+        if point_cloud is not None:
+            pcloud_idx = len(point_clouds)
+            point_clouds.append(mesh_to_pointcloud(point_cloud))
+
         out_bounds.append({
             'Orientation': aaron_quat(rot),
             'Position': aaron_vec(our_pos),
             'Flags': ', '.join(flags),
             'HalfDimensions': aaron_vec(scale),
             'NumChildren': len(children),
-            'PCloudIndex': 255,
+            'PCloudIndex': pcloud_idx,
             'Pivot': aaron_vec(pos),
             'ChildIndex': len(out_bounds) + 1 if len(children) > 0 else -1,
-            'AttributeName': 0,
-            'Surface': object.aaron_data.surface_hash & 0xFFFFFFFF,
-            'NameHash': 0
+            'AttributeName': string_to_hash(object.aaron_data.attribute_name),
+            'Surface': string_to_hash(object.aaron_data.surface),
+            'NameHash': string_to_hash(object.aaron_data.bound_name)
         })
 
         for child in children:
@@ -67,7 +91,7 @@ def main(context, report):
     if len(out_bounds) > 0:
         carData['BoundsPack'] = {
             'Entries': out_bounds,
-            'PointClouds': []
+            'PointClouds': point_clouds
         }
 
     if scene_data.spoiler_type != 'undefined':

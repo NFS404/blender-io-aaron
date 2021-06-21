@@ -4,6 +4,7 @@ import math
 import bmesh
 import bpy
 from mathutils import Matrix, Quaternion, Vector
+from .hash import binhash
 
 FLAGS_OMIT = {'kBounds_Box', 'kBounds_Sphere'}
 
@@ -18,13 +19,6 @@ def prime_hash_cache():
     hash_cache = dict()
     for string in strings_list:
         hash_cache[binhash(string)] = string
-
-
-def binhash(string):
-    val = 0xFFFFFFFF
-    for c in string:
-        val = (val * 33 + ord(c)) & 0xFFFFFFFF
-    return val
 
 
 def resolve_hash(hash):
