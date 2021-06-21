@@ -4,28 +4,9 @@ import math
 import bmesh
 import bpy
 from mathutils import Matrix, Quaternion, Vector
-from .hash import binhash
+from .hash import resolve_hash
 
 FLAGS_OMIT = {'kBounds_Box', 'kBounds_Sphere'}
-
-strings_list = []
-hash_cache = None
-
-
-def prime_hash_cache():
-    global hash_cache
-    if hash_cache is not None:
-        return
-    hash_cache = dict()
-    for string in strings_list:
-        hash_cache[binhash(string)] = string
-
-
-def resolve_hash(hash):
-    if hash == 0:
-        return '0x{0:08X}'.format(hash)
-    prime_hash_cache()
-    return hash_cache.get(hash, '0x{0:08X}'.format(hash))
 
 
 def blender_vec(vec):
