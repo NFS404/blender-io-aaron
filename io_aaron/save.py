@@ -53,6 +53,8 @@ def main(context, report):
     out_bounds = []
     point_clouds = []
 
+    bound_queue = []
+
     def add_bound(object, parent_pos=None):
         pos, rot, scale = object.matrix_world.decompose()
         flags = object.aaron_data.flags | {'kBounds_Box' if object.empty_display_type == 'CUBE' else 'kBounds_Sphere'}
@@ -75,18 +77,29 @@ def main(context, report):
             'NumChildren': len(children),
             'PCloudIndex': pcloud_idx,
             'Pivot': aaron_vec(pos),
-            'ChildIndex': len(out_bounds) + 1 if len(children) > 0 else -1,
+            'ChildIndex': -1,
             'AttributeName': string_to_hash(object.aaron_data.attribute_name),
             'Surface': string_to_hash(object.aaron_data.surface),
             'NameHash': string_to_hash(object.aaron_data.bound_name)
         })
 
+        children.sort(key=lambda x: int(x.name[6:]))
+
         for child in children:
-            add_bound(child, parent_pos=pos)
+            # (parent index, Blender node, parent position)
+            bound_queue.append((len(out_bounds)-1, child, pos))
 
     for object in scene_data.collection.objects:
         if object.aaron_data.object_kind == 'bound' and object.parent is None:
-            add_bound(object)
+            # (parent index, Blender node, parent position)
+            bound_queue.append((None, object, None))
+
+    for bound in bound_queue:
+        parent_idx, node, parent_pos = bound
+        print(f"Saving {node.name}, parent={parent_idx}")
+        add_bound(node, parent_pos)
+        if parent_idx is not None and out_bounds[parent_idx]['ChildIndex'] == -1:
+            out_bounds[parent_idx]['ChildIndex'] = len(out_bounds)-1
 
     if len(out_bounds) > 0:
         carData['BoundsPack'] = {
